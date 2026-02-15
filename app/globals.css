@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-surface;
+  }
+
+  body {
+    @apply bg-background text-textPrimary;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-accentPrimary to-accentSecondary text-background font-semibold rounded-lg hover:scale-105 transition-transform;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 border-2 border-accentPrimary text-accentPrimary font-semibold rounded-lg hover:bg-accentPrimary hover:text-background transition-colors;
+  }
+
+  .container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #151930;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2438;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00d9ff;
+}
+

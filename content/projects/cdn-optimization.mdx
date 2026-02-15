@@ -1,0 +1,219 @@
+---
+id: 'cdn-optimization'
+title: 'CloudFront CDN Implementation for Global Performance'
+subtitle: '57% latency reduction through edge caching and security hardening'
+category: 'DevOps'
+date: '2024-07'
+featured: true
+order: 4
+
+impact:
+  primary: '57% latency reduction'
+  secondary: 'Enhanced security posture'
+
+metrics:
+  - label: 'p95 Latency'
+    before: '700ms'
+    after: '300ms'
+  - label: 'Improvement'
+    value: '57%'
+    suffix: ' reduction'
+  - label: 'Security'
+    value: 'WAF + Headers'
+  - label: 'Error Rate'
+    value: 'Zero impact'
+
+technologies:
+  - AWS
+  - CloudFront
+  - Elastic Load Balancing
+  - Istio
+  - Route 53
+  - Terraform
+  - WAF
+
+diagram: '/diagrams/cdn-optimization.svg'
+thumbnail: '/images/projects/cdn-optimization.png'
+thumbnailPosition: 'top'
+---
+
+# The Challenge
+
+My client's services were deployed in a single AWS region, with all user traffic—regardless of geographic location—routed directly to Elastic Load Balancers in that region. This created performance and security challenges for remote users.
+
+## Performance Issues
+
+- **High latency for remote users:** Users outside the origin region experienced 700ms+ p95 latency
+- **No edge caching:** Every request traveled to origin, even for static or slow-changing content
+- **Limited geographic reach:** Single-region deployment meant long round-trip times for distant users
+
+## Security Gaps
+
+- **Direct ALB exposure:** Load balancers were directly accessed with limited DDoS protection
+- **Inconsistent security headers:** Different services implemented different security headers (or none at all)
+- **No centralized WAF:** Rate limiting and bot protection were handled at the application level
+- **Increased operational overhead:** Each service team responsible for implementing their own security controls, very commonly having none at all
+
+---
+
+# The Solution
+
+I implemented CloudFront CDN in front of existing Elastic Load Balancers, focusing on three key areas: performance through edge caching, security hardening with WAF, and operational standardization.
+
+## Why CloudFront?
+
+Instead of a complex multi-region deployment, CloudFront offered:
+- **Quick implementation:** Days instead of months
+- **Cost-effective:** No need to replicate infrastructure across regions
+- **AWS-native integration:** Seamless with existing ELB and Route 53 or other DNS providers
+- **Global reach:** 450+ edge locations worldwide
+
+## Implementation Approach
+
+### 1. CloudFront Distribution Setup
+
+**Configured CloudFront with ELB as origin:**
+- HTTPS-only connections to origin for security
+- Connection pooling to reduce origin overhead
+- Multiple cache behaviors based on endpoint characteristics
+
+### 2. Intelligent Caching Strategy
+
+**Created path-based cache behaviors for different content types:**
+
+**Static Assets** (CSS, JS, images)
+- Aggressive caching with long TTLs
+- High compression for faster transfers
+- Result: Significant reduction in origin requests
+
+**Semi-Static APIs** (catalogs, configurations)
+- Short-to-medium TTLs based on data volatility
+- Cache key optimization through query parameter normalization
+- Result: Balanced freshness with cache efficiency
+
+**Dynamic APIs** (user sessions, real-time data)
+- No caching to preserve real-time behavior
+- Still benefited from edge SSL termination and compression
+
+### 3. Security Hardening
+
+**AWS WAF Integration:**
+- Rate limiting to prevent abuse and DDoS attacks
+- OWASP Top 10 protection (SQL injection, XSS, etc.)
+- IP reputation filtering to block known malicious actors
+- Geographic filtering capabilities for compliance if needed
+- Custom rules such as blocking additional malicious IP addresses
+
+**Standardized Security Headers:**
+- Implemented security headers at the edge via CloudFront Functions
+- Ensured consistent security posture across all external-facing services
+- Headers included: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+- CSP was left out on purposes as different services depend on different origins, so those policies were still application-specific
+
+**Benefits:**
+- Centralized security enforcement (not dependent on individual services)
+- Reduced operational overhead for service teams
+- Single source of truth for security baseline
+
+### 4. Monitoring & Observability
+
+**Implemented comprehensive monitoring:**
+- CloudFront metrics for cache performance and error rates
+- WAF logs for security insights and threat detection
+- CloudWatch metrics sent to the company's central observability dashboards for real-time visibility
+- Access logs stored in S3 for detailed analysis
+
+# Results & Impact
+
+<MetricComparison
+  before={{ label: 'p95 Latency', value: '700ms' }}
+  after={{ label: 'p95 Latency', value: '300ms' }}
+/>
+
+## Performance Improvements
+
+- 💚 **57% p95 latency reduction** for remote users (700ms → 300ms)
+- ⚡ **Improved user experience** through edge caching and compression
+- 🌍 **Global reach** via CloudFront's 450+ edge locations
+- 🔽 **Reduced origin load** through edge caching layer
+
+## Security Enhancements
+
+- 🛡️ **WAF protection** at the edge with rate limiting and OWASP rules
+- 🔒 **Standardized security headers** across all external-facing services
+- 🚫 **DDoS protection** via AWS Shield Standard (enabled by default with CloudFront)
+- 📊 **Improved visibility** into attack patterns and malicious traffic
+
+## Operational Benefits
+
+- 🎯 **Simplified compliance:** Centralized security controls at the edge
+- 🔧 **Reduced overhead:** Service teams no longer responsible for individual security implementations
+- 📈 **Consistent baseline:** Single security standard enforced for all external traffic
+- ⚙️ **Easier maintenance:** Cache invalidations and edge updates without touching services
+
+## Zero Negative Impact
+
+- ✅ **Error rates unchanged:** No increase in 4xx/5xx errors
+- ✅ **Application behavior preserved:** Proper cache strategies prevented stale data issues
+- ✅ **Developer experience maintained:** No changes to application code required
+
+---
+
+# Lessons Learned
+
+## On Performance Optimization
+
+1. **Geography matters significantly** — Remote users saw the most dramatic improvement (57%), while nearby users saw smaller gains
+2. **Edge caching benefits everyone** — Even cache misses benefited from edge SSL termination and compression
+3. **Proper cache strategies require planning** — Different content types need different TTLs and cache key strategies
+4. **Monitoring is essential** — Can't optimize what you don't measure; CloudFront metrics revealed optimization opportunities
+
+## On Security Implementation
+
+1. **Centralization reduces complexity** — Single edge-level security enforcement is more reliable than trusting individual services
+2. **WAF provides valuable insights** — Logs revealed attack patterns and traffic anomalies previously invisible
+3. **Rate limiting needs real traffic data** — Initial thresholds were adjusted after observing legitimate usage patterns
+
+## On Operational Impact
+
+1. **Standardized baselines reduce overhead** — Service teams no longer responsible for implementing security individually
+2. **Zero-downtime rollout** — Blue-green rollout between old and new architecture made the rollout as simple as changing DNS records, waiting for propagation and deleting old resources afterwards
+3. **Keep rollback options available** — Maintained old ALB DNS during transition as safety net
+4. **Simple solutions can have big impact** — CloudFront implementation took weeks, not months, for 57% improvement
+
+## On Strategic Decisions
+
+1. **Right-sizing solutions matters** — CloudFront was faster and cheaper than multi-region deployment
+2. **Quick wins build momentum** — Fast implementation time demonstrated value quickly
+3. **Edge computing is powerful** — Single edge layer solved multiple problems (performance, security, operations)
+4. **Integration matters** — AWS-native solution simplified implementation and monitoring
+
+# Technologies Used
+
+**CDN & Edge:**
+- AWS CloudFront (global edge network)
+- CloudFront Functions (security headers)
+
+**Security:**
+- AWS WAF (rate limiting, OWASP protection)
+- AWS Shield (DDoS protection)
+
+**Infrastructure:**
+- Elastic Load Balancer (origin)
+- Route 53 (DNS, gradual rollout)
+- S3 (access logs)
+
+**Monitoring:**
+- CloudTrail
+- CloudWatch metrics
+- CloudFront access logs
+
+**Networking**
+- Istio
+
+**Infrastructure as Code:**
+- Terraform (CloudFront, WAF, Route 53)
+
+---
+
+**Next Project:** [Cost Optimization →](/projects/cost-optimization)

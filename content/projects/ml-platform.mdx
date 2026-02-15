@@ -1,0 +1,223 @@
+---
+id: 'ml-platform'
+title: 'ML Inference Platform for Financial Services'
+subtitle: '98% latency reduction to meet transaction SLA'
+category: 'MLOps'
+date: '2024-04'
+featured: true
+order: 2
+
+impact:
+  primary: 'Large bank served'
+  secondary: 'Five to six-figure MRR from ML inference'
+
+metrics:
+  - label: "Latency Reduction"
+    before: "500ms"
+    after: "9ms (p50)"
+    improvement: "98%"
+  - label: "SLA Requirement"
+    value: "50ms"
+    status: "Met"
+  - label: "SLO Target"
+    value: "20ms"
+    status: "Met"
+  - label: "Throughput Scaling"
+    value: "+500%"
+    suffix: " RPS"
+  - label: "p99 Latency"
+    value: "16ms"
+
+technologies:
+  - Azure
+  - Kubernetes (AKS)
+  - Terraform
+  - Python
+  - FastAPI
+  - NumPy
+  - Scikit-learn
+  - Prometheus
+  - Grafana
+  - MLOps
+
+diagram: '/diagrams/ml-platform.svg'
+thumbnail: '/images/projects/ml-platform.png'
+thumbnailPosition: 'top'
+---
+
+# The Challenge
+
+A large LATAM financial institution that I had as a client once required real-time ML inference for **fraud detection and credit risk analysis** during transaction processing. The business constraint was critical:
+
+**Hard Requirement: sub-second end-to-end transaction time**
+- Our ML inference API: **Must be &lt;50ms to meet SLA**
+- Initial system latency: **500ms** (completely unacceptable)
+
+The initial Python-based inference service had:
+- 500ms average latency (10x over budget)
+- Limited throughput (couldn't handle peak banking hours)
+- Single-threaded bottlenecks in data parsing
+- **No path to meeting the SLA without fundamental changes**
+
+Failure to meet this SLA would mean:
+- ❌ Lost contracts with a large financial institution Brazil's
+- ❌ No real-time fraud detection capability
+- ❌ Five to six-figure MRR at risk
+
+# The Solution
+
+I implemented a **two-phase optimization strategy** to meet and exceed the SLA:
+
+## Phase 1: Architectural Migration (Macro-Optimization)
+
+**Goal:** Get under 100ms to make micro-optimization feasible
+
+**Problem Diagnosis:**
+- Profiled the system and identified several loops and data structures that could be optimized
+- 80% of latency came from JSON parsing (single-threaded)
+- 20% from request validation and ML inference
+
+**Solution:**
+Migrated the data parsing and validation layer from Python to Node.js while keeping Python for ML model inference (due to SKLearn and other libraries dependencies).
+
+**Phase 1 Results:**
+- ✅ **Latency: 500ms → 80ms** (84% reduction)
+- ✅ **500% RPS increase** (could handle 5x traffic)
+- ✅ System stable during peak banking hours
+- ⚠️ **Still not good enough** — needed &lt;50ms for SLA
+
+---
+
+## Phase 2: Micro-Optimization (Meeting the SLA)
+
+**New Goal:** Get from 80ms to &lt;20ms to exceed SLO (SLA: 50ms, internal SLO: 20ms)
+
+<span id="sla-slo-definition" />
+
+<Callout type="info">
+**SLA vs SLO:** The Service Level Agreement (SLA) was agreed upon a &lt;50ms hard limit. 
+We set an internal Service Level Objective (SLO) of &lt;20ms for operational margin.
+</Callout>
+
+**Problem:** 80ms was a huge improvement, but the client's longer processing meant we needed to be **under 50ms** to meet the sub-second end-to-end SLA. We needed every millisecond.
+
+**Solution:** Application-level performance tuning across the entire inference pipeline:
+
+### 1. **Feature Engineering Optimization (40ms → 5ms)**
+- Replaced Pandas slow parsing with vectorized NumPy operations
+- Pre-computed static features at model load time
+- Cached frequently accessed lookups (LRU cache)
+
+### 2. **Model Input Preparation (20ms → 2ms)**
+- Optimized data type conversions
+- Removed redundant transformations
+
+### 3. **Inference Optimization (20ms → 2ms)**
+- The sheer replacement of Pandas DataFrames with NumPy arrays improved inference performance
+
+**Phase 2 Results:**
+- ✅ **Median latency (p50): 9ms** (91% reduction from Phase 1)
+- ✅ **p99 latency: 16ms** (99th percentile still well under budget)
+- ✅ **Total improvement: 500ms → 9ms (98% reduction)**
+- ✅ **Maximum headroom** for client processing (&gt;90% of SLA budget)
+
+---
+
+# Results & Impact
+
+## Business Impact
+
+Meeting the SLA enabled:
+- 💰 **Five to six-figure MRR** from ML inference services
+- 🏦 **A large LATAM financial institution** as paying customers
+- 🚀 **Real-time fraud detection** (previously impossible)
+- 📈 **Credit risk scoring** during transaction approval
+- ⚡ **99.9% uptime SLA** maintained
+
+## Technical Achievements
+
+- **98% latency reduction** (500ms → 9ms median)
+- **500% RPS scaling** (architectural migration)
+- **Multi-cloud deployment** (client required Azure deployment for private links, our main cloud was AWS)
+- **Zero-downtime deployments** (canary with health checks)
+- **Full observability** (Grafana dashboards, alerting)
+
+---
+
+# Latency Evolution Timeline
+```
+Latency (ms)
+│
+500 ┤●──────────────────────┐
+    │ Initial State         │
+    │ (Python-only)         │ ❌ 10x over SLA budget
+    │                       │
+    │                       │
+ 80 ┤                       ●─────────┐
+    │                                 │
+    │                   Phase 1       │ ⚠️ Still 60% over budget
+    │              (Architecture)     │
+    │                                 │
+ 50 ┤- - - - - - - - - - - - - - - - - - - - - - -  ← SLA budget line
+    │                                 │
+ 20 ┤· · · · · · · · · · · · · · · · · · · · · · · ·  ← SLO (target)
+    │                                 │
+  9 ┤                                 ●═══════════
+    │                                     Phase 2
+    │                              (Micro-optimization) ✅ Exceeds SLO!
+    │
+    │
+    └────────────────────────────────────────────────→ Time
+       Before          Phase 1            Phase 2
+```
+
+---
+
+# Lessons Learned
+
+## On Performance Optimization
+
+1. **Profile before optimizing** — 80% of latency was in JSON parsing and using the proper library, not ML inference
+2. **Think in layers** — Architectural changes (Phase 1) enable micro-optimizations (Phase 2)
+3. **SLA budgets matter** — Client's sub-second processing meant we needed &lt;50ms, not just "fast enough"
+4. **Measure everything** — p50 vs p99 latency tell different stories (9ms vs 16ms)
+
+## On SLA-Driven Development
+
+1. **Hard constraints drive creativity** — The &lt;50ms SLA forced us to optimize aggressively
+2. **Build in margin** — Our 9-16ms gives 34-40ms headroom (safety buffer for client variability)
+3. **End-to-end thinking** — Your latency is only part of the total transaction time
+
+## On Multi-Phase Optimization
+
+1. **Quick wins first** — Phase 1 (architecture) bought us time for Phase 2 (micro-opt)
+2. **Know when to stop** — At 9ms, further optimization had diminishing returns
+3. **Document the journey** — Showing 500ms → 80ms → 9ms tells a better story than just "9ms"
+
+---
+
+# Technologies Used
+
+**Infrastructure:**
+- Azure (AKS, Azure DevOps/Pipelines)
+- Kubernetes
+- Azure Private Link
+- Terraform (IaC)
+
+**Application:**
+- Python (ML models, NumPy, Fast API)
+
+**Observability:**
+- Prometheus (metrics)
+- Grafana (dashboards)
+
+**Storage:**
+- Azure Blob Storage (ML model storage)
+
+---
+
+*Disclaimer: SLA and latency values on this page are approximate and may have been adjusted for client privacy and confidentiality. [See SLA/SLO definition above →](#sla-slo-definition)*
+
+---
+
+**Next Project:** [Kubernetes Cost Optimization →](/projects/cost-optimization)

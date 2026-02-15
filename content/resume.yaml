@@ -1,0 +1,111 @@
+experience:
+  - id: 'tarmac'
+    company: 'Tarmac'
+    title: 'DevOps/Platform Engineer'
+    location: 'Remote'
+    startDate: '2024-09'
+    endDate: null
+    current: true
+    client: 'Dispatch (Logistics SaaS)'
+    engagement: '1+ years'
+
+    highlights:
+      - 'Reduced infrastructure costs by $36K/year (23%)'
+      - 'Decreased API latency by 57% through CloudFront optimization'
+      - 'Built observability pipeline from scratch (80%+ trace coverage)'
+      - 'Implemented autoscaling enabling 500% growth'
+
+    technologies:
+      - AWS
+      - Kubernetes
+      - Terraform
+      - ArgoCD
+      - Prometheus
+      - Grafana
+
+    projects:
+      - cost-optimization
+      - observability
+      - cdn-optimization
+
+  - id: '4kst'
+    company: '4KST - Unlimited Vision'
+    title: 'Software & DevOps/ML Infrastructure Engineer'
+    location: 'Remote'
+    startDate: '2020-09'
+    endDate: '2024-06'
+    current: false
+
+    summary: "Multi-cloud ML infrastructure engineer for AI startup serving Brazil's top financial institutions."
+
+    highlights:
+      - 'Solo-architected ML platforms serving 3 of Brazil''s top 5 banks'
+      - 'Generated $20K+ MRR through ML inference solutions'
+      - 'Scaled main service 500% (RPS) through optimization'
+      - 'Achieved 99.9% uptime SLA with multi-cloud failover'
+
+    technologies:
+      - AWS
+      - Azure
+      - Kubernetes
+      - Terraform
+      - Python
+      - Node.js
+      - MLOps
+
+    projects:
+      - ml-platform
+
+education:
+  - institution: 'Pontifícia Universidade Católica do Paraná'
+    degree: 'Bachelor of Computer Science'
+    location: 'Curitiba, Brazil'
+    startDate: '2018'
+    endDate: '2022'
+
+  - institution: 'California State University San Marcos'
+    degree: 'International Student, Computer Science'
+    location: 'California, USA'
+    startDate: '2020-01'
+    endDate: '2020-05'
+
+certifications:
+  - name: 'AWS Certified Security – Specialty'
+    issuer: 'Amazon Web Services'
+    date: '2025'
+
+  - name: 'AWS Certified DevOps Engineer – Professional'
+    issuer: 'Amazon Web Services'
+    date: '2024'
+
+  - name: 'AWS Certified Data Engineer – Associate'
+    issuer: 'Amazon Web Services'
+    date: '2025'
+
+  - name: 'AWS Certified Solutions Architect – Associate'
+    issuer: 'Amazon Web Services'
+    date: '2023'
+
+skills:
+  cloud:
+    - name: 'AWS'
+      level: 'expert'
+    - name: 'Azure'
+      level: 'advanced'
+    - name: 'GCP'
+      level: 'beginner'
+
+  orchestration:
+    - 'Kubernetes'
+    - 'Docker'
+    - 'Terraform'
+    - 'Helm'
+    - 'ArgoCD'
+
+  languages:
+    - 'Python'
+    - 'Go'
+    - 'Node.js'
+    - 'TypeScript'
+    - 'Bash'
+

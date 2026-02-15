@@ -1,0 +1,166 @@
+---
+id: 'cost-optimization'
+title: 'Kubernetes Cost Optimization for Ephemeral Environments'
+subtitle: 'POC initiative that reduced infrastructure costs by $36K/year'
+category: 'DevOps'
+date: '2024-09'
+featured: true
+order: 1
+
+impact:
+  primary: '50% cost optimization in ephemeral environments'
+  secondary: '$36K/year saved'
+
+metrics:
+  - label: 'Cost Reduction'
+    value: '$36K'
+    suffix: '/year'
+  - label: 'Ephemeral Env Costs'
+    value: '-50%'
+    suffix: ' reduction'
+  - label: 'Cluster Resources'
+    before: '100%'
+    after: '50%'
+  - label: 'Performance'
+    value: 'Zero degradation'
+
+technologies:
+  - AWS (EKS)
+  - Kubernetes
+  - KEDA
+  - Karpenter
+  - Terraform
+  - HPA
+  - Istio
+  - Prometheus
+  - GitOps
+
+diagram: '/diagrams/cost-optimization.svg'
+thumbnail: '/images/projects/cost-optimization.png'
+---
+
+# The Challenge
+
+My client's AWS EKS infrastructure was running 10-15 ephemeral environments for pull request testing, each staying up 24/7 despite zero traffic during non-business hours. This resulted in significant costs with 50% idle capacity during off-peak hours and weekends.
+
+The environments served a critical function—enabling developers to test changes in isolated, production-like environments—but the always-on approach was financially unsustainable.
+
+The team needed a solution that would:
+
+- Reduce costs without impacting performance and behavior of the ephemeral environments
+- Scale dynamically (including scale-to-zero) with traffic patterns
+- "Wake up" ephemeral environments once traffic to them was detected
+
+**Existing infrastructure:**
+- **Node autoscaling:** Karpenter for dynamic EC2 provisioning
+- **Pod autoscaling:** HPA based on CPU/memory metrics
+- **Service mesh:** Istio with gateway traffic metrics exposed to Prometheus
+- **GitOps:** Automated ephemeral environment provisioning per PR
+
+**The missing piece:** HPA couldn't scale to zero, and we needed external metrics (HTTP requests) as a scaling trigger.
+
+# The Solution
+
+## Identifying the Solution
+
+After researching scale-to-zero solutions, I proposed a proof-of-concept around [KEDA (Kubernetes Event-Driven Autoscaling)](https://keda.sh/), which extends HPA to support:
+- **External metrics** (Prometheus, Datadog, Kafka, PostgreSQL, and 50+ others)
+- **Scale-to-zero** (impossible with native HPA)
+- **Custom scaling behavior** (cooldown periods, scaling modifiers)
+
+**Why KEDA fit perfectly:**
+- We already exposed Istio gateway metrics to Prometheus
+- Our ephemeral environments were event-driven (triggered by HTTP requests)
+- KEDA's Prometheus scaler could monitor HTTP request rates and scale pods accordingly
+- Supports scale-to-zero with configurable "wake-up" on first request
+
+## Implementation & Validation
+
+To validate the POC, I followed a systematic rollout plan:
+
+### Phase 1: Development Environment Setup
+1. **Deployed KEDA** via Helm chart to dev cluster
+2. **Modified Helm charts** to replace HPA with KEDA ScaledObjects
+   - Configured Prometheus scaler targeting Istio gateway metrics
+   - Set scale-to-zero with 15-minute idle timeout
+3. **Updated GitOps framework** to support KEDA configuration in PR workflows
+
+### Phase 2: Testing the Sleep/Wake Cycle
+1. **Spun up test environment** from PR
+2. **Monitored scale-to-zero** after 15 minutes of inactivity
+3. **Triggered wake-up** by sending HTTP request to environment URL
+4. **Verified cold-start behavior:** Pods scaled from 0 → 1 within 2 minutes (worst case scenario for heavy Ruby application)
+5. **Ran automated test suite** to ensure zero functional regression
+
+### Phase 3: Developer Experience Enhancement
+- Added `wake-environment` command to internal CLI tool for automatic environment activation
+- This eliminated manual curl requests and improved UX
+
+### Phase 4: Rollout
+After successful validation:
+- ✅ Deployed KEDA to staging/testing environment
+- ✅ Merged infrastructure PRs
+- ✅ Documented new workflow and communicated changes to engineering team
+- ✅ Monitored cost metrics for 2 weeks to confirm savings
+
+# Results & Impact
+
+**Within 2 months of rollout:**
+
+- 💰 **$36K annual savings**
+- 📊 **50% cost reduction** for development and testing environments specifically
+- 📉 **Off-hours resource utilization:** 50% idle → near-zero
+- ⚡ **Near-Zero performance impact:** Cold-start adds ~30s - 2 minutes (acceptable for dev/test)
+- 🚀 **Faster feedback:** Developers still get isolated environments per PR
+- 🎯 **100% GitOps:** All changes tracked in version control
+
+## Technical Achievements
+
+- **Scale-to-zero working reliably** across 10-15 concurrent environments
+- **KEDA ScaledObjects** replacing ~50 HPA definitions
+- **Prometheus integration** using existing Istio metrics (no new infrastructure)
+- **Automated wake-up** via CLI tool improved developer experience
+- **Full rollback capability** (GitOps-based, revert = one merge)
+
+# Lessons Learned
+
+## On POC Methodology
+1. **Thorough validation is critical** — Testing sleep/wake cycles in dev before rollout prevented surprises in other SDLC environments
+2. **Developer experience matters** — Adding the CLI wake-up feature eliminated friction and improved adoption
+3. **Monitor, don't assume** — Watched cost metrics for 2 weeks post-rollout to confirm projected savings
+
+## On KEDA & Scale-to-Zero
+1. **KEDA > HPA for event-driven workloads** — External metrics and scale-to-zero made it perfect for ephemeral environments
+2. **Cold-start trade-offs are acceptable in dev/test** — 30-second wake-up was fine; wouldn't work for production
+3. **Existing metrics are gold** — Leveraging Istio metrics meant zero new infrastructure
+
+## On Cost Optimization
+1. **Idle time = opportunity** — 50% idle capacity was low-hanging fruit
+2. **Right-size the solution** — Could have used Lambda or Fargate, but KEDA kept us in Kubernetes (simpler for team)
+3. **Small wins compound** — $36K/year from one POC; similar optimizations in other areas could save 6 figures
+
+---
+
+# Technologies Used
+
+**Infrastructure:**
+- AWS (EKS, EC2)
+- Kubernetes
+- Karpenter (node autoscaling)
+- Terraform (IaC)
+
+**Autoscaling:**
+- KEDA (Kubernetes Event-Driven Autoscaling)
+- Horizontal Pod Autoscaler (HPA) - replaced
+
+**Observability:**
+- Prometheus (metrics)
+- Istio (service mesh, gateway metrics)
+
+**Developer Experience:**
+- GitOps (automated PR environments)
+- Internal CLI tool (environment management)
+
+---
+
+**Next Project:** [ML Inference Platform →](/projects/ml-platform)

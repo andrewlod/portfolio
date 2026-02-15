@@ -1,0 +1,71 @@
+---
+id: 'observability'
+title: 'End-to-End Observability with OpenTelemetry'
+subtitle: '80%+ trace coverage across microservices'
+category: 'Platform Engineering'
+date: '2024-02'
+featured: true
+order: 3
+
+impact:
+  primary: '80%+ trace coverage'
+  secondary: 'MTTR reduced significantly'
+
+metrics:
+  - label: 'Trace Coverage'
+    before: '0%'
+    after: '80%+'
+  - label: 'MTTR'
+    before: '4h+'
+    after: '45min'
+  - label: 'Alert Noise'
+    before: 'High'
+    after: 'Actionable'
+
+technologies:
+  - OpenTelemetry
+  - Prometheus
+  - Grafana
+  - Loki
+  - Tempo
+  - AWS
+  - Kubernetes
+
+diagram: '/diagrams/observability.svg'
+thumbnail: '/images/projects/observability.png'
+---
+
+# The Challenge
+
+The client operated a distributed system with dozens of services but had:
+
+- No distributed tracing
+- Fragmented metrics and logs
+- High MTTR and guesswork during incidents
+
+# The Solution
+
+I implemented an observability stack centered on **OpenTelemetry** and the Grafana OSS suite (Prometheus, Loki, Tempo).
+
+## 1. Telemetry Standardization
+
+- Introduced OpenTelemetry SDKs and auto-instrumentation
+- Defined span naming conventions and attribute taxonomy
+- Instrumented key user journeys and critical paths first
+
+## 2. Unified Observability Platform
+
+- Centralized metrics, logs, and traces in a single Grafana view
+- SLO-based dashboards for error budget tracking
+- Correlated logs ↔ traces ↔ metrics for faster incident response
+
+<Callout type="success">
+  Post-incident reviews shifted from _guessing_ to **data-backed** analysis using traces and exemplars.
+</Callout>
+
+# Results & Impact
+
+- **80%+ trace coverage** for production workloads
+- **MTTR reduced from hours to under an hour**
+- **Actionable alerts** based on SLOs instead of noisy symptom alerts
+
