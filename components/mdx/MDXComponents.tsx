@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { ComponentProps } from 'react';
+import { TOC } from './TOC';
 
 export const MDXComponents = {
   h1: (props: ComponentProps<'h1'>) => (
@@ -103,5 +104,7 @@ export const MDXComponents = {
       </div>
     </div>
   ),
+
+  TOC: TOC,
 };
 

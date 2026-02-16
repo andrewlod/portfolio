@@ -3,7 +3,7 @@ id: 'cdn-optimization'
 title: 'CloudFront CDN Implementation for Global Performance'
 subtitle: '57% latency reduction through edge caching and security hardening'
 category: 'DevOps'
-date: '2024-07'
+date: '2025-07'
 featured: true
 order: 4
 
@@ -36,6 +36,8 @@ diagram: '/diagrams/cdn-optimization.svg'
 thumbnail: '/images/projects/cdn-optimization.png'
 thumbnailPosition: 'top'
 ---
+
+<TOC />
 
 # The Challenge
 
@@ -108,7 +110,7 @@ Instead of a complex multi-region deployment, CloudFront offered:
 - Implemented security headers at the edge via CloudFront Functions
 - Ensured consistent security posture across all external-facing services
 - Headers included: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy
-- CSP was left out on purposes as different services depend on different origins, so those policies were still application-specific
+- CSP was left out on purpose as different services depend on different origins, so those policies were still application-specific
 
 **Benefits:**
 - Centralized security enforcement (not dependent on individual services)
@@ -216,4 +218,4 @@ Instead of a complex multi-region deployment, CloudFront offered:
 
 ---
 
-**Next Project:** [Cost Optimization →](/projects/cost-optimization)
+**Next Project:** [Kubernetes Cost Optimization for Ephemeral Environments →](/projects/cost-optimization)

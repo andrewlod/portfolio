@@ -3,25 +3,44 @@ experience:
     company: 'Tarmac'
     title: 'DevOps/Platform Engineer'
     location: 'Remote'
-    startDate: '2024-09'
+    startDate: '2024-06'
     endDate: null
     current: true
     client: 'Dispatch (Logistics SaaS)'
     engagement: '1+ years'
 
     highlights:
-      - 'Reduced infrastructure costs by $36K/year (23%)'
+      - 'Reduced infrastructure costs by $36K/year (50% of dev/test environment costs)'
       - 'Decreased API latency by 57% through CloudFront optimization'
+      - Led Cloudflare Zero Trust VPN migration
       - 'Built observability pipeline from scratch (80%+ trace coverage)'
-      - 'Implemented autoscaling enabling 500% growth'
+      - 'Supported SOC 2 audit by implementing audit logging, vulnerability remediation, and access controls across 15+ microservices'
+      - 'Delivered internal training sessions on GitOps workflows, AWS SSO,   and infrastructure tooling; collaborated with Engineering and QA teams to standardize incident response'
 
     technologies:
-      - AWS
-      - Kubernetes
-      - Terraform
       - ArgoCD
-      - Prometheus
+      - AWS
+      - Bash
+      - Cloudflare
+      - Coralogix
+      - Datadog
+      - Docker
+      - GitHub Actions
       - Grafana
+      - Go
+      - Helm
+      - Istio
+      - Jira
+      - KEDA
+      - Kubernetes
+      - Karpenter
+      - Nginx
+      - Opensearch
+      - OpenTelemetry
+      - Prometheus
+      - PostgreSQL
+      - Redis
+      - Terraform
 
     projects:
       - cost-optimization
@@ -36,22 +55,32 @@ experience:
     endDate: '2024-06'
     current: false
 
-    summary: "Multi-cloud ML infrastructure engineer for AI startup serving Brazil's top financial institutions."
+    summary: 'Multi-cloud ML infrastructure engineer for AI startup serving Brazil''s top financial institutions'
 
     highlights:
-      - 'Solo-architected ML platforms serving 3 of Brazil''s top 5 banks'
-      - 'Generated $20K+ MRR through ML inference solutions'
-      - 'Scaled main service 500% (RPS) through optimization'
-      - 'Achieved 99.9% uptime SLA with multi-cloud failover'
+      - 'Solo-architected ML platforms serving Brazil''s largest financial institutions'
+      - 'Scaled main service RPS 500% by migrating data parsing bottleneck from Python to Node.js, supporting enterprise banking clients with $1M+ budgets'
+      - 'Developed Business Continuity Plan with multi-cloud failover (AWS/Azure), achieving 99.9% uptime SLA'
+      - 'Reduced system downtime 50% by implementing multi-source monitoring with Grafana, CloudWatch, and automated SNS alerting for proactive incident response'
+      - 'Automated CI/CD pipelines reducing deployment time 70% while maintaining zero-downtime releases'
 
     technologies:
       - AWS
       - Azure
+      - Batch Learning
+      - C++
+      - CloudWatch
+      - Data Stream Learning
+      - Docker
+      - ECS
+      - Grafana
+      - GCP
       - Kubernetes
-      - Terraform
-      - Python
-      - Node.js
       - MLOps
+      - Node.js
+      - Python
+      - SNS
+      - Terraform
 
     projects:
       - ml-platform
@@ -70,42 +99,66 @@ education:
     endDate: '2020-05'
 
 certifications:
-  - name: 'AWS Certified Security – Specialty'
+  - name: 'AWS Certified Security - Specialty'
     issuer: 'Amazon Web Services'
     date: '2025'
 
-  - name: 'AWS Certified DevOps Engineer – Professional'
+  - name: 'AWS Certified DevOps Engineer - Professional'
     issuer: 'Amazon Web Services'
     date: '2024'
 
-  - name: 'AWS Certified Data Engineer – Associate'
+  - name: 'AWS Certified Data Engineer - Associate'
     issuer: 'Amazon Web Services'
     date: '2025'
 
-  - name: 'AWS Certified Solutions Architect – Associate'
+  - name: 'AWS Certified Solutions Architect - Associate'
     issuer: 'Amazon Web Services'
     date: '2023'
 
 skills:
-  cloud:
-    - name: 'AWS'
-      level: 'expert'
-    - name: 'Azure'
-      level: 'advanced'
-    - name: 'GCP'
-      level: 'beginner'
-
-  orchestration:
-    - 'Kubernetes'
-    - 'Docker'
-    - 'Terraform'
-    - 'Helm'
+  'DevOps':
     - 'ArgoCD'
-
-  languages:
-    - 'Python'
-    - 'Go'
-    - 'Node.js'
-    - 'TypeScript'
+    - 'AWS'
+    - 'Azure'
     - 'Bash'
+    - 'CI/CD'
+    - 'Datadog'
+    - 'Docker'
+    - 'GCP'
+    - 'GitHub Actions'
+    - 'GitOps'
+    - 'Helm'
+    - 'IAM'
+    - 'Infrastructure as Code (IaC)'
+    - 'Istio'
+    - 'Kubernetes'
+    - 'Karpenter'
+    - 'KEDA'
+    - 'Linux'
+    - 'Nginx'
+    - 'Opensearch'
+    - 'OpenTelemetry'
+    - 'Prometheus'
+    - 'PostgreSQL'
+    - 'Redis'
+    - 'Terraform'
+
+  'Software Engineering':
+    - 'Agile/Scrum'
+    - 'API Design (REST, gRPC)'
+    - 'Bash'
+    - 'C++'
+    - 'Code Review'
+    - 'Distributed Systems'
+    - 'Event-Driven Architecture'
+    - 'Go'
+    - 'Microservices Architecture'
+    - 'Node.js'
+    - 'Prompt Engineering'
+    - 'Python'
+    - 'Rust'
+    - 'Spec-Driven Development'
+    - 'System Design'
+    - 'Test-Driven Development'
+    - 'TypeScript'
 
