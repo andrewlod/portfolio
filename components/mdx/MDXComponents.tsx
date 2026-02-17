@@ -88,22 +88,40 @@ export const MDXComponents = {
     before,
     after,
   }: {
-    before: { label: string; value: string };
-    after: { label: string; value: string };
-  }) => (
-    <div className="grid grid-cols-2 gap-4 my-6 p-6 bg-surfaceElevated rounded-lg">
-      <div>
-        <p className="text-textTertiary text-sm mb-1">Before</p>
-        <p className="text-2xl font-bold font-mono">{before.value}</p>
+    before?: { label?: string; value?: string } | undefined;
+    after?: { label?: string; value?: string } | undefined;
+  }) => {
+    // Defensive checks
+    if (!before?.value || !after?.value) {
+      console.error('MetricComparison error:', { before, after });
+      return (
+        <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg my-6">
+          <p className="text-red-500 text-sm">
+            MetricComparison: Missing required props (before.value or after.value)
+          </p>
+        </div>
+      );
+    }
+  
+    return (
+      <div className="grid grid-cols-2 gap-4 my-6 p-6 bg-surfaceElevated rounded-lg">
+        <div>
+          <p className="text-textTertiary text-sm mb-1">
+            {before.label || 'Before'}
+          </p>
+          <p className="text-2xl font-bold font-mono">{before.value}</p>
+        </div>
+        <div>
+          <p className="text-textTertiary text-sm mb-1">
+            {after.label || 'After'}
+          </p>
+          <p className="text-2xl font-bold font-mono text-accentTertiary">
+            {after.value}
+          </p>
+        </div>
       </div>
-      <div>
-        <p className="text-textTertiary text-sm mb-1">After</p>
-        <p className="text-2xl font-bold font-mono text-accentTertiary">
-          {after.value}
-        </p>
-      </div>
-    </div>
-  ),
+    );
+  },
 
   TOC: TOC,
 };

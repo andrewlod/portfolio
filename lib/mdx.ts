@@ -48,8 +48,14 @@ async function compileFile(filePath: string) {
   const fileContents = fs.readFileSync(filePath, 'utf8');
   const { data, content } = matter(fileContents);
 
-  const { content: mdxContent } = await compileMDX({
+  const { content: mdxContent } = await compileMDX<{ [key: string]: any }>({
     source: content,
+    options: {
+      mdxOptions: {
+        remarkPlugins: [],
+        rehypePlugins: [],
+      },
+    },
     components: MDXComponents,
   });
 
