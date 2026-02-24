@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getAllBlogPosts, getBlogPostBySlug } from '@/lib/mdx';
+import { SidebarTOC } from '@/components/SidebarTOC';
 
 export async function generateStaticParams() {
   const posts = await getAllBlogPosts();
@@ -20,28 +21,31 @@ export default async function BlogPostPage({
   }
 
   return (
-    <article className="py-20">
-      <div className="container mx-auto px-6 max-w-3xl">
-        <a
-          href="/blog"
-          className="inline-flex items-center text-textSecondary hover:text-accentPrimary mb-8"
-        >
-          ← Back to Blog
-        </a>
+    <>
+      <article className="py-20">
+        <div className="container mx-auto px-6 max-w-3xl">
+          <a
+            href="/blog"
+            className="inline-flex items-center text-textSecondary hover:text-accentPrimary mb-8"
+          >
+            ← Back to Blog
+          </a>
 
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">{post.title}</h1>
-          {post.subtitle && (
-            <p className="text-xl text-textSecondary mb-2">{post.subtitle}</p>
-          )}
-          <p className="text-textTertiary text-sm">
-            {new Date(post.date).toLocaleDateString()}
-          </p>
-        </header>
+          <header className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">{post.title}</h1>
+            {post.subtitle && (
+              <p className="text-xl text-textSecondary mb-2">{post.subtitle}</p>
+            )}
+            <p className="text-textTertiary text-sm">
+              {new Date(post.date).toLocaleDateString()}
+            </p>
+          </header>
 
-        <div className="prose prose-invert max-w-none">{post.content}</div>
-      </div>
-    </article>
+          <div className="prose prose-invert max-w-none">{post.content}</div>
+        </div>
+      </article>
+      <SidebarTOC />
+    </>
   );
 }
 
