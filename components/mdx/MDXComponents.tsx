@@ -136,5 +136,35 @@ export const MDXComponents = {
   },
 
   TOC: TOC,
+
+  // Table wrapper with horizontal scroll
+  table: (props: ComponentProps<'table'>) => (
+    <div className="my-6 overflow-x-auto">
+      <table className="w-full border-collapse border border-surfaceElevated rounded-lg" {...props} />
+    </div>
+  ),
+
+  // Header background
+  thead: (props: ComponentProps<'thead'>) => (
+    <thead className="bg-surface" {...props} />
+  ),
+
+  // Body (no special styling)
+  tbody: (props: ComponentProps<'tbody'>) => <tbody {...props} />,
+
+  // Row borders
+  tr: (props: ComponentProps<'tr'>) => (
+    <tr className="border-b border-surfaceElevated last:border-0" {...props} />
+  ),
+
+  // Header cells (bold, left-aligned)
+  th: (props: ComponentProps<'th'>) => (
+    <th className="px-4 py-3 text-left text-sm font-semibold text-textPrimary border-r border-surfaceElevated last:border-0" {...props} />
+  ),
+
+  // Data cells
+  td: (props: ComponentProps<'td'>) => (
+    <td className="px-4 py-3 text-sm text-textSecondary border-r border-surfaceElevated last:border-0" {...props} />
+  ),
 };
 
