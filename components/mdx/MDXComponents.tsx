@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { ComponentProps } from 'react';
+import { CodeBlock } from './CodeBlock';
 import { TOC } from './TOC';
 
 export const MDXComponents = {
@@ -24,7 +25,7 @@ export const MDXComponents = {
     />
   ),
   li: (props: ComponentProps<'li'>) => <li className="ml-4" {...props} />,
-
+  
   code: (props: ComponentProps<'code'>) => {
     const { className, children, ...rest } = props;
     const isInline = !className;
@@ -40,19 +41,30 @@ export const MDXComponents = {
       );
     }
 
-    return (
-      <code className={className} {...rest}>
-        {children}
-      </code>
-    );
+    // Block code with syntax highlighting
+    return <CodeBlock className={className}>{String(children)}</CodeBlock>;
   },
 
-  pre: (props: ComponentProps<'pre'>) => (
-    <pre
-      className="bg-surface p-4 rounded-lg overflow-x-auto mb-6 border border-surfaceElevated"
-      {...props}
-    />
-  ),
+  pre: (props: ComponentProps<'pre'>) => {
+    // Check if this is a code block (has a code child)
+    const isCodeBlock = props.children && 
+      typeof props.children === 'object' && 
+      'type' in props.children && 
+      props.children.type === 'code';
+  
+    if (isCodeBlock) {
+      // Let CodeBlock handle the styling
+      return <div className="my-6">{props.children}</div>;
+    }
+  
+    // For non-code pre blocks (if you have any)
+    return (
+      <pre
+        className="bg-surface p-4 rounded-lg overflow-x-auto mb-6 border border-surfaceElevated"
+        {...props}
+      />
+    );
+  },
 
   img: (props: ComponentProps<'img'>) => (
     <Image
