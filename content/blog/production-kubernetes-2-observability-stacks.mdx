@@ -1,0 +1,466 @@
+---
+id: 'production-kubernetes-2-observability-stacks'
+title: 'Production-ready Kubernetes Part 2 - Observability Stacks'
+subtitle: 'Choosing Architecture Over Hype'
+category: 'DevOps'
+date: '2026-02-26 21:00:00'
+featured: false
+
+impact: {}
+
+metrics: {}
+
+technologies:
+  - Elastic stack
+  - Elasticsearch
+  - ELK
+  - Grafana
+  - LGTM
+  - Logs
+  - Loki
+  - Metrics
+  - Mimir
+  - Traces
+  - Observability
+  - Opensearch
+  - OpenTelemetry
+  - Prometheus
+  - SLA
+  - SLO
+  - SLI
+  - Tempo
+---
+
+## The Stack Before the Strategy Problem
+
+Most Kubernetes observability implementations don’t fail because of tooling limitations.
+
+They fail because of **lack of intent.**
+
+Teams often adopt an observability stack the same way they adopt many other technologies:
+- “Everyone uses it”
+- “It integrates with X”
+- “We inherited it”
+- “It looked good in a demo”
+
+The result?
+
+Dashboards exist. Logs flow. Metrics accumulate. Traces are enabled.
+- Yet during incidents:
+- Root cause analysis is slow
+- Signals conflict
+- Data is fragmented
+- Costs spiral
+- Alert fatigue grows
+
+The issue is rarely missing telemetry.
+
+It is **misaligned observability architecture.**
+
+In production Kubernetes environments — where systems are distributed, ephemeral, and failure-prone by design — your stack choice directly impacts:
+- ✔ Mean time to detect (MTTD)
+- ✔ Mean time to resolve (MTTR)
+- ✔ Cost efficiency
+- ✔ Cognitive load on engineers
+- ✔ Long-term scalability
+
+Choosing an observability stack is therefore not a tooling decision.
+
+It is an **architectural decision.**
+
+---
+
+## The Three Dominant Approaches in 2026
+
+While the ecosystem is vast, most production environments gravitate toward three patterns:
+1. **The LGTM Stack (Loki, Grafana, Tempo, Mimir)**
+2. **The Elastic Stack**
+3. **OpenTelemetry-Centric Architectures**
+
+Each reflects a different philosophy about:
+- Data storage
+- Query patterns
+- Integration strategy
+- Operational overhead
+- Vendor lock-in
+- Cost model
+
+Understanding these differences is essential.
+
+---
+
+## 🧗 The LGTM Stack
+### Unified Experience & Cloud-Native Efficiency
+
+**Components:** Loki (logs), Grafana (visualization), Tempo (traces), Mimir(+ Prometheus) (metrics)
+
+The LGTM stack has gained strong adoption among cloud-native teams because it emphasizes:
+- ✔ Tight integration
+- ✔ Consistent UI/UX
+- ✔ Kubernetes-native workflows
+- ✔ Resource efficiency
+- ✔ Lower operational complexity
+
+### Core Philosophy
+
+Instead of treating logs, metrics, and traces as separate universes, LGTM promotes:
+
+<Callout type="info">
+👉 “Single pane of glass observability”
+</Callout>
+
+Engineers can pivot between:
+
+Metric → Trace → Log → Dashboard
+
+without context switching across platforms.
+
+### Where LGTM Excels
+
+✅ **Cloud-native microservices** - Designed for Kubernetes patterns and ephemeral workloads.
+
+✅ **Teams prioritizing operational simplicity** - Lower cognitive friction, fewer disconnected tools.
+
+✅ **Cost-conscious environments** - Loki and Tempo are optimized for efficient storage patterns.
+
+✅ **Correlation-heavy workflows** - Grafana enables smooth cross-signal navigation.
+
+### Typical Strengths
+- ✔ Unified visualization layer
+- ✔ Lower infrastructure footprint (vs heavy OLAP engines)
+- ✔ Native Kubernetes integration
+- ✔ Easier onboarding for engineers
+- ✔ Strong developer experience
+
+### Common Pitfalls
+- ❌ Assuming “unified UI = unified strategy”
+- ❌ Poor metric design → noisy dashboards
+- ❌ Cardinality mismanagement
+- ❌ Treating Grafana as decoration rather than diagnosis
+
+In summary, focusing purely on telemetry mechanics while ignoring business context is one of the fastest ways to misuse LGTM — or any observability stack.
+
+### Bad Implementation Example
+
+**Symptoms:**
+- Hundreds of dashboards with no real connection to the business itself
+- Metrics with pod_name, pod_ip, container_id labels (really depends on use case, but usually you don't want these there)
+- Logs rarely queried
+- Traces enabled but ignored
+
+**Outcome:**
+- Observability theater.
+- High ingestion costs.
+- Low diagnostic value.
+
+### Good Implementation Example
+
+**Characteristics:**
+- ✔ Metrics designed around SLIs
+- ✔ Cardinality controlled intentionally
+- ✔ Logs structured & correlated via trace_id
+- ✔ Traces sampled strategically
+- ✔ Dashboards built for decisions, not aesthetics
+- ✔ Incident runbooks linked to dashboards and concrete steps to be taken
+
+**Outcome:**
+- Fast triage
+- Clear signal relationships
+- Predictable costs
+
+---
+
+## 🔍 The Elastic Stack
+### Deep Search & Analytical Power
+
+Elastic remains dominant in environments where search is the primary investigative tool.
+
+### Core Philosophy
+
+Elastic treats observability data as:
+
+<Callout type="info">
+👉 Observability data treated as analytical, query-first datasets
+</Callout>
+
+It shines when you need:
+- ✔ Complex queries
+- ✔ Deep log forensics
+- ✔ Cross-dimensional analysis
+- ✔ Massive-scale log analytics
+
+### Where Elastic Excels
+
+✅ **Log-heavy environments** - Security, compliance, audit trails, debugging via text search.
+
+✅ **Complex troubleshooting workflows** - Ad-hoc queries across large datasets.
+
+✅ **Organizations with mature data practices**
+
+✅ **Very large-scale ingestion**
+
+### Typical Strengths
+- ✔ Powerful full-text search
+- ✔ Flexible querying
+- ✔ Rich analytical capabilities
+- ✔ Strong ecosystem maturity
+- ✔ Excellent for log-centric investigations
+
+### Common Pitfalls
+- ❌ High operational overhead
+- ❌ Resource-intensive clusters
+- ❌ Cost explosion at scale
+- ❌ Fragmented UX if metrics/traces poorly integrated
+- ❌ Overengineering for smaller teams
+
+### Bad Implementation Example
+
+**Symptoms:**
+- Elastic deployed “because it’s powerful”
+- Minimal query expertise
+- Logs dumped unstructured
+- Metrics underutilized
+- Cluster costs rising
+
+**Outcome:**
+- Expensive logging system.
+- Low return on complexity.
+
+### Good Implementation Example
+
+**Characteristics:**
+- ✔ Structured logs with consistent schemas
+- ✔ Query patterns well understood
+- ✔ Index lifecycle management tuned
+- ✔ Used where analytical (not transactional) search is critical
+- ✔ Integrated with metrics/traces intentionally
+
+**Outcome:**
+- Exceptional forensic capability.
+- High diagnostic precision.
+
+---
+
+## 🔭 OpenTelemetry-Centric Architectures
+### Vendor-Neutral Observability
+
+OpenTelemetry (OTel) is less a “stack” and more a **strategic layer.**
+
+### Core Philosophy
+
+<Callout type="info">
+👉 Standardize instrumentation, decouple backend choice
+</Callout>
+
+Instead of committing early to a vendor:
+- Instrument once
+- Route anywhere
+- Swap backends if needed
+
+The OTel Collector becomes:
+- ✔ Pipeline controller
+- ✔ Data router
+- ✔ Transformation layer
+- ✔ Lock-in reducer
+
+### Where OTel Excels
+- ✅ **Multi-vendor environments**
+- ✅ **Hybrid / multi-cloud architectures**
+- ✅ **Organizations avoiding lock-in**
+- ✅ **Teams designing long-term portability**
+
+### Typical Strengths
+- ✔ Standardized telemetry model
+- ✔ Flexible routing
+- ✔ Backend independence
+- ✔ Future-proof instrumentation
+- ✔ Excellent ecosystem momentum
+
+### Common Pitfalls
+- ❌ Assuming OTel “solves observability” on its own
+- ❌ Overcomplicated pipelines
+- ❌ Noisy signal routing
+- ❌ Lack of backend strategy
+
+OTel is **glue**, not destination.
+
+### Bad Implementation Example
+
+**Symptoms:**
+- OTel everywhere
+- Data routed to multiple backends
+- Adding processors with no clear intention
+- No clear ownership
+- Signals duplicated
+- Engineers confused
+
+**Outcome:**
+- Telemetry chaos
+- High costs
+- Low clarity
+
+### Good Implementation Example
+
+**Characteristics:**
+- ✔ OTel as standard instrumentation layer
+- ✔ Clear backend selection strategy
+- ✔ Sampling policies defined
+- ✔ Pipelines minimal & purposeful
+- ✔ Used to enable flexibility, not complexity
+- ✔ Continuous cost monitoring
+
+**Outcome:**
+- Clean architecture
+- Portable observability
+
+---
+
+## Architecture-Level Comparison
+| Dimension|LGTM|Elastic|OpenTelemetry|
+| ----- | ----- | ----- | ----- |
+| Philosophy | Unified UX | Deep analytics/search | Vendor-neutral layer |
+| Strength | Correlation & simplicity | Log forensics & querying | Flexibility & portability |
+| Cost Model | Efficient if designed well | Can grow quickly | Depends on backend |
+| Complexity | Moderate | High | Variable |
+| Best Fit | Cloud-native teams |Log-heavy / analytical orgs | Multi-backend strategies |
+
+---
+
+## How to Make the Technical Decision
+
+Choosing a stack should begin with **questions, not preferences.**
+
+### 1️⃣ What Problem Dominates Your Incidents?
+
+Ask:
+- ✔ Are incidents diagnosed via logs?
+- ✔ Are SLO breaches your main trigger?
+- ✔ Is latency root cause often unclear?
+- ✔ Do you need forensic-level search?
+
+Log-centric investigations → Elastic strong fit
+
+Correlation & SLO workflows → LGTM strong fit
+
+### 2️⃣ What Is Your Operational Tolerance?
+
+Be honest about:
+- ✔ Team expertise
+- ✔ Maintenance capacity
+- ✔ Infra budget
+- ✔ Complexity appetite
+
+Elastic provides power at the cost of **operational load.**
+
+LGTM optimizes for **efficiency and integration.**
+
+### 3️⃣ How Important Is Vendor Neutrality?
+
+If you value:
+- ✔ Backend flexibility
+- ✔ Multi-cloud portability
+- ✔ Avoiding lock-in
+
+Then standardize on OpenTelemetry early.
+
+### 4️⃣ What Drives Cost in Your Environment?
+
+Observability cost is often dominated by:
+- ❌ Log volume
+- ❌ High-cardinality metrics
+- ❌ Unbounded trace ingestion
+
+Evaluate:
+- ✔ Retention policies
+- ✔ Sampling strategies
+- ✔ Cardinality discipline
+- ✔ Data lifecycle management
+
+### 5️⃣ Do You Need Unified Experience or Specialized Depth?
+
+Two valid strategies:
+
+Unified Platform Strategy → LGTM-style integration
+
+Specialized Tool Strategy → Elastic + Prometheus + Tempo etc.
+
+Danger arises when teams mix tools **without intentional boundaries.**
+
+---
+
+## A Critical Reality Check
+
+No stack will fix:
+- ❌ Poor SLI design
+- ❌ Noisy metrics
+- ❌ Meaningless logs
+- ❌ Random alerts
+- ❌ Undefined SLOs
+
+Tools amplify architecture.
+
+They do not replace it.
+
+---
+
+## Conclusion — Architecture First, Stack Second
+
+Observability maturity is not measured by:
+- Number of dashboards
+- Volume of metrics
+- Log retention length
+- Tracing coverage %
+
+It is measured by:
+- ✔ Incident detection speed
+- ✔ Diagnostic precision
+- ✔ Engineer confidence
+- ✔ Cost predictability
+- ✔ Signal clarity
+
+The best observability stack is therefore not:
+- 👉 “Most popular”
+- 👉 “Most powerful”
+- 👉 “Most features”
+
+It is:
+
+<Callout type="info">
+👉 The one aligned with your system’s failure modes, scale, workflows, and constraints
+</Callout>
+
+---
+
+## Actionable Steps
+
+If you’re evaluating or redesigning your stack:
+
+✅ **Step 1 — Map Your Incident Patterns** - Where does root cause usually emerge?
+
+✅ **Step 2 — Identify Dominant Signal Type** - Logs? Metrics? Traces?
+
+✅ **Step 3 — Audit Cost Drivers** - Cardinality, ingestion, retention.
+
+✅ **Step 4 — Standardize Instrumentation (OTel strongly recommended)**
+
+✅ **Step 5 — Design for SLOs** - Observability must reflect user experience, not infrastructure vanity metrics.
+
+✅ **Step 6 — Reduce Tool Sprawl** - Every additional platform increases cognitive and operational load.
+
+---
+
+## Final Thought
+
+Observability is not about collecting telemetry.
+
+It is about **designing systems that explain themselves under stress.**
+
+Your stack should serve that goal — not become another source of noise.
+
+---
+
+## Related Posts
+
+Production-ready Kubernetes Series:
+- [Part 1 - Observability Foundations](https://andrewlod.com/blog/production-kubernetes-1-observability-foundations)
+- [Part 2 - Observability Stacks](https://andrewlod.com/blog/production-kubernetes-2-observability-stacks)

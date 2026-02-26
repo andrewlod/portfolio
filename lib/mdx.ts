@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import remarkGfm from 'remark-gfm';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import { MDXComponents } from '@/components/mdx/MDXComponents';
 
@@ -52,7 +53,7 @@ async function compileFile(filePath: string) {
     source: content,
     options: {
       mdxOptions: {
-        remarkPlugins: [],
+        remarkPlugins: [remarkGfm],
         rehypePlugins: [],
       },
     },
