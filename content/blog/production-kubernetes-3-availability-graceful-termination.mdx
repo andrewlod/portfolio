@@ -1,0 +1,407 @@
+---
+id: 'production-kubernetes-3-availability-graceful-termination'
+title: 'Production-ready Kubernetes Part 3 - Availability with Graceful Termination'
+subtitle: 'Why Availability Is Defined by How You Go Down'
+category: 'DevOps'
+date: '2026-03-03 21:00:00'
+featured: false
+
+impact: {}
+
+metrics: {}
+
+technologies:
+  - Graceful Shutdown
+  - Kubernetes
+---
+
+## Deployments Shouldn’t Hurt
+
+In a well-designed Kubernetes environment, deployments are expected to be routine, predictable, and invisible to users.
+
+Yet many teams observe during rollouts:
+- Spikes in 502 / 503 errors
+- Connection resets
+- In-flight requests failing
+- Databases entering recovery
+- Message consumers reprocessing events
+
+These symptoms rarely indicate a failure of Kubernetes.
+
+They usually reveal a failure of **termination design.**
+
+Graceful shutdown is not a polish feature. It is a **core availability mechanism.**
+
+---
+
+## Understanding the Kubernetes Termination Lifecycle
+
+When a pod is terminated:
+- 1️⃣ Pod marked `Terminating`
+- 2️⃣ `preStop` hook executed (if defined)  
+- 3️⃣ SIGTERM sent to container  
+- 4️⃣ Endpoint removed from Service (as readiness fails / pod transitions)  
+- 5️⃣ Grace period countdown  
+- 6️⃣ SIGKILL if still running
+
+This sequence introduces a critical truth:
+
+<Callout type="info">
+Kubernetes does not guarantee graceful shutdown. It offers an opportunity for it.
+</Callout>
+
+Your application must cooperate.
+
+---
+
+## Layer 1 — Orchestration-Level Gracefulness
+### Key Kubernetes Controls
+#### ✅ `terminationGracePeriodSeconds`
+
+Defines how long Kubernetes waits between:
+
+SIGTERM → SIGKILL
+
+```yaml
+spec:
+  terminationGracePeriodSeconds: 30
+```
+
+#### ✅ `preStop` Hook
+
+Useful for draining traffic before SIGTERM:
+
+```yaml
+lifecycle:
+  preStop:
+    exec:
+      command: ["/bin/sh", "-c", "sleep 5"]
+```
+
+This allows:
+- ✔ Load balancer propagation
+- ✔ Endpoint removal delay
+- ✔ Connection draining
+
+### Common Mistake
+
+#### ❌ Grace period too short
+
+Example:
+
+```yaml
+terminationGracePeriodSeconds: 5
+```
+
+Outcome:
+- Requests cut mid-flight
+- Buffers not flushed
+- Connections reset
+
+### Sizing the Grace Period
+
+There is **no universal value.**
+
+It depends on:
+- ✔ Request duration
+- ✔ Shutdown activities
+- ✔ Queue draining time
+- ✔ Disk flush latency
+- ✔ DB/MQ semantics
+
+#### Rule-of-Thumb Approach
+
+Measure instead of guessing:
+- ✔ Observe longest request duration (p95 / p99)
+- ✔ Measure shutdown duration in staging
+- ✔ Add safety margin (20–50%)
+
+Example:
+- Max request: 2s
+- DB flush: 3s
+- Cleanup: 1s
+
+→ Use 10–15s minimum
+
+#### Reality Check
+
+Too long:
+- ❌ Slow rollouts
+- ❌ Resource waste
+
+Too short:
+- ❌ Errors
+- ❌ Corruption
+- ❌ SLO violations
+
+Don’t treat grace period as a tradeoff between availability and rollout speed. Availability should always come first.
+
+---
+
+## Layer 2 — Application-Level Gracefulness
+
+Kubernetes sends SIGTERM.
+
+Your application decides whether that signal actually means anything.
+
+### Example 1 — Stateless REST API (Go)
+#### Bad Example (No Signal Handling)
+```go
+http.ListenAndServe(":8080", nil)
+```
+
+Outcome:
+- ❌ SIGTERM ignored
+- ❌ Connections killed abruptly
+
+#### ✅ Good Example — Graceful HTTP Shutdown
+```go
+func main() {
+    srv := &http.Server{Addr: ":8080"}
+
+    // Start server in goroutine
+    go func() {
+        log.Println("Server starting on :8080")
+        if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("listen: %s\n", err)
+        }
+    }()
+
+    // Setup signal catching
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // Both SIGINT and SIGTERM
+
+    // Block until signal received
+    <-quit
+    log.Println("Shutdown signal received, starting graceful shutdown...")
+
+    // Add Idle Connection Handling - strongly linked to terminationGracePeriodSeconds
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    // Attempt graceful shutdown
+    if err := srv.Shutdown(ctx); err != nil {
+        log.Fatal("Server forced to shutdown:", err)
+    }
+
+    log.Println("Server exited gracefully")
+}
+```
+
+What This Achieves:
+- ✔ Stops accepting new requests
+- ✔ Waits for in-flight requests
+- ✔ Prevents dropped connections
+
+#### Stateless Shutdown Goal
+
+<Callout type="info">
+Zero dropped requests
+</Callout>
+
+Because state lives elsewhere.
+
+### Example 2 — Stateful Workload (Disk Writes)
+
+Imagine a service:
+- Buffers events
+- Flushes to disk
+- Requires consistency
+
+#### ❌ Bad Example
+
+SIGTERM received → process exits immediately
+
+Outcome:
+- ❌ Partial writes
+- ❌ Corrupted files
+- ❌ Recovery required
+
+#### ✅ Good Example — Flush Before Exit
+```go
+func main() {
+    // Setup signal catching
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // Added SIGINT
+
+    // Block until signal received
+    <-quit
+    log.Println("Shutdown signal received, initiating graceful shutdown...")
+
+    // Create shutdown context with timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+    defer cancel()
+
+    // Use WaitGroup to track shutdown tasks
+    var wg sync.WaitGroup
+    errChan := make(chan error, 2)
+
+    // Flush buffers
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        log.Println("Flushing buffers...")
+        if err := storage.Flush(ctx); err != nil {
+            log.Printf("Flush failed: %v", err)
+            errChan <- err
+            return
+        }
+        log.Println("Buffers flushed successfully")
+    }()
+
+    // Wait for flush to complete or timeout
+    done := make(chan struct{})
+    go func() {
+        wg.Wait()
+        close(done)
+    }()
+
+    select {
+    case <-done:
+        log.Println("All shutdown tasks completed")
+    case <-ctx.Done():
+        log.Println("Shutdown timeout exceeded, forcing exit")
+    }
+
+    // Close resources (quick, no need for goroutine)
+    log.Println("Closing resources...")
+    if err := storage.Close(); err != nil {
+        log.Printf("Error closing resources: %v", err)
+    }
+
+    log.Println("Shutdown complete")
+}
+```
+
+What This Protects:
+- ✔ Data integrity
+- ✔ Consistency guarantees
+- ✔ Recovery avoidance
+
+### Stateful Shutdown Goal
+
+<Callout type="info">
+Correctness over speed
+</Callout>
+
+Better to delay termination than corrupt state.
+
+### SIGTERM vs SIGINT vs SIGKILL — Why It Matters
+| Signal | Meaning | Your Chance |
+| ----- | ----- | ----- |
+| SIGTERM | “Please terminate” (sent by system) | ✅ Graceful exit |
+| SIGINT | “Please terminate” (sent by user via CTRL+C) | ✅ Graceful exit |
+| SIGKILL | “Terminate now” | ❌ No cleanup |
+
+SIGKILL happens when:
+- ❌ Grace period expires
+- ❌ App hangs
+- ❌ Cleanup too slow
+
+### Stateless vs Stateful — Different Failure Costs
+#### Stateless Failure
+- ❌ Dropped requests
+- ❌ Retryable errors
+- ✔ Usually recoverable
+
+#### Stateful Failure
+- ❌ Data corruption
+- ❌ Inconsistent state
+- ❌ Long recovery
+- ❌ Possible data loss
+
+Treating stateful workloads like stateless ones is a common reliability failure.
+
+---
+
+## How Graceful Termination Impacts SLOs
+
+Graceful shutdown directly influences:
+- ✔ Availability SLO
+- ✔ Latency SLO
+- ✔ Error-rate SLO
+
+### Without Graceful Shutdown
+
+During deployments:
+- ❌ Error spikes
+- ❌ Latency jitter
+- ❌ User-visible failures
+
+### With Proper Termination
+- ✔ Stable rollouts
+- ✔ Predictable error rates
+- ✔ Reduced alert noise
+
+---
+
+## Kubernetes + Application Coordination
+
+Graceful termination succeeds when:
+- ✔ Grace period sized correctly
+- ✔ App respects SIGTERM
+- ✔ preStop used when needed
+- ✔ Readiness/liveness probes aligned
+
+### Anti-Pattern
+- ❌ Readiness probe still “OK” during shutdown
+-  Traffic still routed
+-  Requests dropped
+
+### ✅ Correct Pattern
+
+On SIGTERM:
+- ✔ Application flips readiness to *failed*
+- ✔ Kubernetes stops routing traffic
+- ✔ Application drains existing work
+
+---
+
+## Common Production Failures
+- ❌ Grace period < request duration
+- ❌ App ignores SIGTERM
+- ❌ Blocking shutdown logic
+- ❌ Buffers not flushed
+- ❌ Stateful pods SIGKILLed
+- ❌ Misconfigured probes
+
+---
+
+### Conclusion — Reliability Is Tested at Shutdown
+
+Most systems are designed for:
+- ✔ Startup
+- ✔ Steady state
+
+Few are designed for **termination.**
+
+Yet termination happens constantly:
+- Deployments
+- Autoscaling
+- Node drains
+- Failures
+
+<Callout type="info">
+A production-ready system is not only one that runs well.
+
+It is also one that **stops well.**
+</Callout>
+
+Actionable Checklist
+- ✅ Handle SIGTERM explicitly
+- ✅ Stop accepting new work
+- ✅ Drain in-flight operations
+- ✅ Flush buffers / writes
+- ✅ Close connections cleanly
+- ✅ Size `terminationGracePeriodSeconds` realistically
+- ✅ Align probes with shutdown state
+- ✅ Test shutdown under load
+
+---
+
+## Related Posts
+
+Production-ready Kubernetes Series:
+- [Part 1 - Observability Foundations](https://andrewlod.com/blog/production-kubernetes-1-observability-foundations)
+- [Part 2 - Observability Stacks](https://andrewlod.com/blog/production-kubernetes-2-observability-stacks)
+- [Part 3 - Availability - Graceful Termination](https://andrewlod.com/blog/production-kubernetes-3-availability-graceful-termination)
