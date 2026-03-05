@@ -1,0 +1,434 @@
+---
+id: 'production-kubernetes-4-availability-components'
+title: 'Production-ready Kubernetes Part 4 - The Kubernetes High Availability Checklist'
+subtitle: 'Control plane, workloads, HPA tuning, and stateful safety patterns'
+category: 'DevOps'
+date: '2026-03-05 21:00:00'
+featured: false
+
+impact: {}
+
+metrics: {}
+
+technologies:
+  - Kubernetes Control Plane
+  - Fault tolerance
+  - High Availability
+  - Horizontal Pod Autoscaling
+  - Kubernetes
+  - Pod Disruption Budgets
+  - Stateful
+  - Stateless
+---
+
+## High Availability in Kubernetes: Beyond Redundancy
+
+High availability is often reduced to a single YAML line:
+
+```yaml
+replicas: 3
+```
+
+That’s not high availability.
+
+That’s redundancy.
+
+True HA means your system survives:
+- Node maintenance
+- Zone outages
+- Traffic spikes
+- Network partitions
+- Partial control plane degradation
+
+Without user-visible errors.
+
+High availability in Kubernetes operates at multiple layers. Let’s break them down.
+
+---
+
+## 1️⃣ Control Plane High Availability
+
+Your workloads depend on the Kubernetes control plane:
+- API Server
+- Controller Manager
+- Scheduler
+- etcd
+
+If the control plane is not highly available:
+- Scaling stops
+- Scheduling halts
+- Deployments freeze
+- Cluster state becomes inconsistent
+
+### API Server Redundancy
+
+In production clusters:
+- Multiple API server instances
+- Fronted by a load balancer
+- Spread across zones
+
+Problem solved:
+- Single API server failure doesn’t stall cluster operations.
+
+### etcd Quorum
+
+etcd is the cluster’s source of truth.
+
+It requires quorum to operate.
+
+Example:
+- 3 nodes → quorum = 2
+- 5 nodes → quorum = 3
+
+If quorum is lost:
+- Cluster becomes read-only or unavailable.
+
+Problem solved:
+- Majority-based consensus prevents split-brain.
+
+Critical design rule:
+<Callout type="info">
+Odd number of etcd nodes.
+
+Spread across failure domains.
+</Callout>
+
+---
+
+## 2️⃣ Workload-Level High Availability
+
+Once the control plane is resilient, workloads must be.
+
+### Replica Count: Redundancy, Not HA
+
+More replicas increase availability probability, but:
+- They must be distributed across nodes and zones.
+- They must not all be disrupted at once.
+
+Use:
+```yaml
+topologySpreadConstraints:
+```
+
+or:
+```yaml
+podAntiAffinity:
+```
+
+Problem solved:
+- Prevents all replicas landing on a single node or zone.
+
+### Rolling Update Strategy
+
+High availability is also impacted by how deployments roll out.
+
+A poorly configured rolling update can cause downtime — even with multiple replicas.
+
+Example:
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+```
+
+- `maxUnavailable` controls how many pods can go down during an update.
+- `maxSurge` controls how many extra pods can be temporarily created.
+
+If `maxUnavailable` is too high, your deployment may violate availability guarantees.
+
+**RollingUpdate strategy and PDB must be designed together.**
+
+### Pod Disruption Budgets (PDBs)
+
+Without PDBs:
+- `kubectl drain` can evict all replicas.
+- Rolling upgrades can cause downtime.
+- Autoscaler scale-down may reduce availability below safe levels.
+
+Example:
+```yaml
+spec:
+  minAvailable: 2
+```
+
+or
+```yaml
+maxUnavailable: 1
+```
+
+Problem solved:
+- Guarantees minimum healthy pods during voluntary disruptions.
+
+PDBs protect you from yourself.
+
+### Node-Level Failures
+
+High availability planning must also account for:
+- Memory pressure
+- OOM evictions
+- Disk pressure
+- Noisy neighbor impact
+
+Even if replicas are distributed correctly, node instability can degrade availability.
+
+HA is not just about zones — it’s about realistic failure conditions.
+
+---
+
+## 3️⃣ Autoscaling: The Most Misunderstood HA Component
+
+Autoscaling is not just about handling growth.
+
+It’s about surviving volatility.
+
+The Horizontal Pod Autoscaler (HPA) adjusts replica count based on metrics like:
+- CPU utilization
+- Memory
+- Custom metrics (QPS, latency, queue depth)
+
+But naive HPA setups fail under real-world pressure.
+
+Let’s go deeper.
+
+### Scaling Up: Reaction Time Matters
+
+If:
+- Traffic spike happens in 10 seconds
+- Pods take 45 seconds to become Ready
+
+You have a gap.
+
+During that gap:
+- Latency spikes
+- Errors increase
+- SLOs are violated
+
+Problem solved by:
+- Right-sized baseline replicas
+- Faster startup times
+- Proactive scaling thresholds
+
+### Cooldown Periods
+
+HPA avoids rapid oscillation using cooldown windows.
+
+Without cooldown:
+- Rapid scale up
+- Rapid scale down
+- Thrashing behavior
+
+Thrashing causes:
+- Unstable performance
+- Resource waste
+- Cold start storms
+
+Cooldown solves:
+- Scaling oscillation
+- Flapping between replica counts
+
+But excessive cooldown creates:
+- Sluggish response to traffic spikes
+
+Trade-off:
+- Stability vs responsiveness
+
+### Stabilization and Scaling Behavior
+
+Modern HPA allows tuning scaling behavior explicitly:
+```yaml
+behavior:
+  scaleUp:
+    stabilizationWindowSeconds: 0
+  scaleDown:
+    stabilizationWindowSeconds: 300
+```
+
+This configuration means:
+- Scale up immediately when metrics demand it
+- Wait 5 minutes before scaling down
+
+Why?
+
+Scaling down too aggressively can:
+- Remove capacity before traffic stabilizes
+- Cause oscillation and cold-start storms
+
+Stabilization windows solve:
+- Thrashing behavior
+- Premature scale-down
+- Performance instability
+
+Autoscaling is a balance between responsiveness and stability.
+
+### What HPA Does NOT Solve
+- It does not fix slow startup times.
+- It does not prevent pod eviction.
+- It does not protect stateful quorum.
+- It does not guarantee zone distribution.
+
+HPA is elasticity — not fault tolerance.
+
+---
+
+## 4️⃣ Planning HA for Stateless Applications
+
+Stateless systems are easier — but not trivial.
+
+Goals:
+- Zero dropped requests
+- Fast recovery
+- Even load distribution
+
+Design considerations:
+- Readiness probes must reflect real readiness.
+- Rolling updates must respect surge/unavailable limits.
+- HPA must consider startup time.
+- PDB must prevent complete disruption.
+
+Key principle:
+<Callout type="info">
+Your minimum replica count must absorb the largest expected spike before scaling completes.
+</Callout>
+
+Stateless HA is about capacity buffers.
+
+---
+
+## 5️⃣ Planning HA for Stateful Applications
+
+Stateful systems introduce new risks:
+- Quorum loss
+- Split-brain
+- Data inconsistency
+- Slow recovery
+
+Adding replicas blindly can make things worse.
+
+### Quorum Awareness
+
+If you run:
+- 3 replicas → tolerate 1 failure
+- 5 replicas → tolerate 2 failures
+
+But if two replicas are in the same zone:
+- A zone failure can break quorum.
+
+Problem solved by:
+- Zone-aware scheduling
+- Anti-affinity
+- Multi-zone distribution
+
+### Split-Brain Risk
+
+In a network partition:
+
+Two partitions may believe they are primary.
+
+This corrupts data.
+
+Prevention requires:
+- Consensus algorithms
+- Proper fencing
+- Strict quorum enforcement
+
+In stateful systems, losing quorum is often worse than serving errors — because you may corrupt the very data you're trying to protect.
+
+High availability for stateful systems is about correctness first, uptime second.
+
+### Stateful Failures Are Slower
+
+Stateless pods restart fast.
+
+Stateful pods may:
+- Rebuild indexes
+- Replay logs
+- Perform leader election
+
+HA planning must consider recovery time, not just steady state.
+
+---
+
+## 6️⃣ Common HA Anti-Patterns
+- ❌ replicas: 3 without anti-affinity
+- ❌ No PDBs
+- ❌ HPA with default thresholds and no tuning
+- ❌ All replicas in one availability zone
+- ❌ Stateful sets without quorum planning
+- ❌ Scale-to-zero assumptions for critical systems
+- ❌ Ignoring cold start latency
+
+High availability is a system property — not a single configuration.
+
+---
+
+## 7️⃣ The Practical HA Checklist
+
+Before calling your application fault-tolerant:
+
+Control Plane:
+- API server redundancy
+- etcd quorum across zones
+
+Workload:
+- Minimum replicas > 1
+- Anti-affinity or topology spread
+- Proper rolling update strategy
+- Pod Disruption Budget configured
+
+Autoscaling:
+- HPA configured with meaningful metrics
+- Stabilization windows tuned
+- Cooldown understood
+- Startup time measured
+
+Stateful:
+- Quorum math verified
+- Zone-aware scheduling
+- Recovery time tested
+- Split-brain mitigation in place
+
+---
+
+## Conclusion — High Availability Is a Design Discipline
+
+High availability is not about surviving one failure.
+
+It’s about surviving failure without cascading impact.
+
+It requires:
+- Redundancy
+- Distribution
+- Elasticity
+- Coordination
+- Correctness
+
+A cluster with replicas but no disruption control is fragile.
+
+A cluster with HPA but no startup optimization is reactive.
+
+A stateful system without quorum awareness is dangerous.
+
+---
+
+## Actionable Next Steps
+- ✅ Audit your PDBs.
+- ✅ Check zone distribution of replicas.
+- ✅ Measure pod startup time under load.
+- ✅ Review HPA thresholds and stabilization windows.
+- ✅ Validate quorum math for stateful systems.
+- ✅ Simulate a node drain in staging.
+- ✅ Simulate a zone outage.
+
+High availability is not proven by configuration — it is proven by controlled failure.
+
+---
+
+## Related Posts
+
+Production-ready Kubernetes Series:
+- [Part 1 - Observability Foundations](https://andrewlod.com/blog/production-kubernetes-1-observability-foundations)
+- [Part 2 - Observability Stacks](https://andrewlod.com/blog/production-kubernetes-2-observability-stacks)
+- [Part 3 - Availability - Graceful Termination](https://andrewlod.com/blog/production-kubernetes-3-availability-graceful-termination)
+- [Part 4 - Availability - Kubernetes Components](https://andrewlod.com/blog/production-kubernetes-4-availability-components)
