@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { ComponentProps } from 'react';
 import { CodeBlock } from './CodeBlock';
+import { SeriesRef } from './SeriesRef';
 import { TOC } from './TOC';
 
 export const MDXComponents = {
@@ -134,7 +135,8 @@ export const MDXComponents = {
       </div>
     );
   },
-
+  
+  SeriesRef: SeriesRef,
   TOC: TOC,
 
   // Table wrapper with horizontal scroll
