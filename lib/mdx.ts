@@ -39,6 +39,9 @@ export interface BlogPost {
   id: string;
   title: string;
   subtitle?: string;
+  refTitle?: string;
+  series?: string;
+  seriesOrder?: number;
   date: string;
   tags?: string[];
   featured?: boolean;
