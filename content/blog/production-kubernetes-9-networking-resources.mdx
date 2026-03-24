@@ -1,0 +1,406 @@
+---
+id: 'production-kubernetes-9-networking-resources'
+title: 'Production-ready Kubernetes Part 9 - Kubernetes Networking: Securing the Front Door and the Internal Corridors'
+subtitle: 'Understanding how Ingress, Gateway API, Network Policies, and operational access shape the security posture of your Kubernetes clusters'
+category: 'DevOps'
+date: '2026-03-24 21:00:00'
+featured: false
+
+refTitle: 'Part 9 - Networking - Resources'
+series: 'production-kubernetes'
+seriesOrder: 9
+
+impact: {}
+
+metrics: {}
+
+technologies:
+  - Kubernetes
+  - Networking
+  - Security
+---
+
+Kubernetes networking is often treated as a **plumbing problem.**
+
+As long as traffic reaches the right pod, everything seems fine.
+
+But once your cluster is running real production workloads, networking becomes much more than connectivity.
+
+It becomes your **primary security boundary.**
+
+Many engineers are surprised to discover that Kubernetes networking is intentionally very permissive by default.
+
+The core networking model assumes:
+- pods should be able to reach each other
+- services should be discoverable
+- cluster communication should “just work”
+
+This makes development easier.
+
+But in production environments, it also creates a dangerous situation:
+
+<Callout type="info">
+**A flat network where everything can talk to everything.**
+</Callout>
+
+In the eyes of an attacker, this isn’t convenience.
+
+It’s an opportunity for **lateral movement.**
+
+A compromised pod shouldn’t automatically gain access to:
+- databases
+- internal dashboards
+- messaging systems
+- control-plane APIs
+
+Yet in many clusters, it does.
+
+To secure a Kubernetes cluster properly, engineers must think about two things:
+1. The Front Door – how traffic enters the cluster
+2. The Internal Corridors – how workloads communicate internally
+
+Let’s break down the key networking components that define those boundaries.
+
+---
+
+## 1️⃣ Pod Networking Model — The Flat Network
+
+Kubernetes networking is built on a simple assumption:
+
+<Callout type="info">
+**Every pod can communicate with every other pod.**
+</Callout>
+
+This is often referred to as the **flat network model.**
+
+Every pod receives its own IP address, and pods communicate directly without NAT.
+
+For example:
+```txt
+Service A     →  Service B
+10.244.1.5       10.244.3.7
+```
+
+The cluster network makes this communication possible through the **Container Network Interface (CNI).**
+
+Common CNI implementations include:
+- Calico
+- Cilium
+- Flannel
+- Weave
+
+These plugins create the networking layer that allows pods across nodes to communicate.
+
+### Why Kubernetes uses a flat network
+
+This design simplifies application development.
+
+Developers can assume:
+- pods are reachable via IP
+- services provide stable discovery
+- networking behaves similarly to a traditional data center
+
+But the downside becomes obvious in production.
+
+If an attacker compromises a single pod, they can potentially scan the entire cluster.
+
+Example attack scenario:
+
+```txt
+Compromised pod
+     ↓
+Port scan cluster
+     ↓
+Find database service
+     ↓
+Attempt credential reuse
+```
+
+Without network isolation, **one vulnerability can expose your entire platform.**
+
+This is why flat networking must be paired with network policies.
+
+---
+
+## 2️⃣ Ingress vs Gateway API — Securing the Front Door
+
+Most applications need external access.
+
+In Kubernetes, this is typically handled through **Ingress resources.**
+
+Example:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+spec:
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+```
+
+Ingress resources route external HTTP traffic to internal services.
+
+They are implemented through **Ingress Controllers**, such as:
+- NGINX Ingress Controller
+- Traefik
+- HAProxy
+- AWS ALB Controller
+
+### The Ingress limitations
+
+Ingress was intentionally simple.
+
+But as systems became more complex, limitations started to appear:
+- limited expressiveness
+- weak separation between platform teams and application teams
+- inconsistent implementations across controllers
+
+This led to the development of the **Gateway API.**
+
+Example Gateway API configuration:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: external-gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+```
+
+And routing rules:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: web-route
+spec:
+  parentRefs:
+    - name: external-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: web-service
+          port: 80
+```
+
+### Security risks at the front door
+
+Many real-world incidents happen because of misconfigured ingress rules.
+
+Examples include:
+- accidentally exposing internal dashboards
+- exposing Prometheus or Grafana endpoints
+- exposing admin APIs
+
+These incidents often occur when developers deploy quick ingress rules like `/*`, which unintentionally exposes services.
+
+A well-designed gateway strategy helps prevent these mistakes by separating:
+- infrastructure ownership
+- application routing rules
+
+---
+
+## 3️⃣ Network Policies — The Zero-Trust Foundation
+
+Network policies are the **most important security feature** in Kubernetes networking.
+
+They define **which pods can communicate with which other pods.**
+
+Example default-deny policy:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+```
+
+This policy blocks all traffic by default.
+
+Then you selectively allow communication.
+
+Example: allow Service A → Service B.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-service-a
+spec:
+  podSelector:
+    matchLabels:
+      app: service-a
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: service-a
+```
+
+Now only Service A pods can access Service B.
+
+### Why network policies matter
+
+Without policies, attackers can move freely.
+
+With policies, you enforce **Zero Trust networking:**
+
+<Callout type="info">
+Only explicitly allowed traffic is permitted.
+</Callout>
+
+Benefits include:
+- workload isolation
+- reduced blast radius
+- defense against lateral movement
+
+### Important caveat
+
+Network policies only work if your CNI plugin supports them.
+
+Examples that do:
+- Calico
+- Cilium
+
+Some lightweight CNIs used in dev clusters may not enforce them fully.
+
+This is why **production clusters must validate network policy enforcement.**
+
+---
+
+## 4️⃣ Port-Forwarding and Operational Access
+
+`kubectl port-forward` is an incredibly useful development tool.
+
+Example:
+
+```bash
+kubectl port-forward svc/database 5432:5432
+```
+
+This command exposes the database locally:
+
+```txt
+localhost:5432 → cluster database
+```
+
+For developers, this is extremely convenient.
+
+But from a security perspective, it bypasses several safeguards:
+- ingress controls
+- gateway routing
+- network policies
+
+Because traffic flows through the **Kubernetes API server tunnel.**
+
+This creates a dangerous operational pattern.
+
+Teams sometimes rely on port-forwarding for:
+- database access
+- admin dashboards
+- internal services
+
+This is fine temporarily during development.
+
+But in production environments it can become **an undocumented backdoor into your cluster.**
+
+Better approaches include:
+- internal gateways
+- VPN-based access
+- bastion hosts
+- authenticated service endpoints
+
+Operational access should be **designed intentionally**, not improvised through port-forwarding.
+
+---
+
+## Conclusion
+
+Kubernetes networking works extremely well out of the box.
+
+But its defaults prioritize **connectivity and developer convenience**, not security.
+
+In production environments, engineers must actively design network boundaries.
+
+That means securing:
+1. The Front Door — how traffic enters the cluster
+2. The Internal Corridors — how workloads communicate internally
+3. Operational Access Paths — how engineers interact with services
+
+When these boundaries are properly implemented, Kubernetes networking becomes a powerful security layer.
+
+When they are ignored, the cluster effectively becomes a flat network where one vulnerability can expose everything.
+
+Production-ready Kubernetes networking is not about making packets move.
+
+It’s about **controlling where they are allowed to go.**
+
+---
+
+## Actionable Steps
+### Step 1 — Audit your current network exposure
+
+Identify:
+- exposed ingress endpoints
+- publicly reachable services
+- internal dashboards accidentally exposed.
+
+### Step 2 — Implement a default-deny policy
+
+Start every namespace with a **default deny network policy.**
+
+Then explicitly allow necessary communication.
+
+### Step 3 — Validate CNI policy enforcement
+
+Ensure your networking plugin actually enforces network policies.
+
+Not all CNIs implement them equally.
+
+### Step 4 — Separate platform and application routing
+
+Adopt the Gateway API model to create clear boundaries between:
+- cluster networking infrastructure
+- application routing.
+
+### Step 5 — Remove operational shortcuts
+
+Audit the use of `kubectl port-forward`.
+
+Replace long-term operational access with proper:
+- internal gateways
+- bastion hosts
+- authenticated service access.
+
+---
+
+## Related Posts
+
+Production-ready Kubernetes Series:
+<SeriesRef series="production-kubernetes" />
